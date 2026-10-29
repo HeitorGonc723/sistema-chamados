@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum PapelPessoa {
+  SOLICITANTE
+  TECNICO
+}
+
+enum StatusChamado {
+  ABERTO
+  EM_ATENDIMENTO
+  RESOLVIDO
+  FECHADO
+  CANCELADO
+}
+
+enum Prioridade {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+model Pessoa {
+  id       Int         @id @default(autoincrement())
+  nome     String      @db.VarChar(150)
+  email    String      @unique @db.VarChar(191)
+  papel    PapelPessoa
+  ativo    Boolean     @default(true)
+  criadoEm DateTime    @default(now())
+
+  chamadosAbertos   Chamado[]    @relation("Solicitante")
+  chamadosAtendidos Chamado[]    @relation("Tecnico")
+  comentarios       Comentario[]
+
+  @@map("pessoas")
+}
+
+model TipoProblema {
+  id       Int       @id @default(autoincrement())
+  nome     String    @unique @db.VarChar(100)
+  ativo    Boolean   @default(true)
+  criadoEm DateTime  @default(now())
+  chamados Chamado[]
+
+  @@map("tipos_problema")
+}
+
+model Chamado {
+  id             Int           @id @default(autoincrement())
+  titulo         String        @db.VarChar(100)
+  descricao      String        @db.Text
+  prioridade     Prioridade    @default(MEDIA)
+  status         StatusChamado @default(ABERTO)
+  solicitanteId  Int
+  tecnicoId      Int?
+  tipoProblemaId Int
+  resolvidoEm    DateTime?
+  criadoEm       DateTime      @default(now())
+  atualizadoEm   DateTime      @updatedAt
+
+  solicitante  Pessoa       @relation("Solicitante", fields: [solicitanteId], references: [id], onDelete: Restrict)
+  tecnico      Pessoa?      @relation("Tecnico", fields: [tecnicoId], references: [id], onDelete: Restrict)
+  tipoProblema TipoProblema @relation(fields: [tipoProblemaId], references: [id], onDelete: Restrict)
+  comentarios  Comentario[]
+
+  @@index([status])
+  @@index([prioridade])
+  @@index([tipoProblemaId])
+  @@index([tecnicoId, status])
+  @@map("chamados")
+}
+
+model Comentario {
+  id        Int      @id @default(autoincrement())
+  texto     String   @db.Text
+  chamadoId Int
+  autorId   Int
+  criadoEm  DateTime @default(now())
+
+  chamado Chamado @relation(fields: [chamadoId], references: [id], onDelete: Restrict)
+  autor   Pessoa  @relation(fields: [autorId], references: [id], onDelete: Restrict)
+
+  @@index([chamadoId])
+  @@map("comentarios")
+}
